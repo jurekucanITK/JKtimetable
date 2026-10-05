@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#151618" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Urnik">
+  <title>Urnik</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <button id="prev" class="icon-btn" aria-label="Prejšnji teden">‹</button>
+    <button id="title" class="title" aria-label="Na današnji teden">
+      <span id="week-label">Urnik</span>
+      <small id="week-sub"></small>
+    </button>
+    <button id="next" class="icon-btn" aria-label="Naslednji teden">›</button>
+    <button id="settings-btn" class="icon-btn" aria-label="Nastavitve">⚙︎</button>
+  </header>
+
+  <main id="week" class="week" aria-live="polite"></main>
+  <p id="status" class="status"></p>
+
+  <!-- Podrobnosti dogodka -->
+  <dialog id="detail" class="sheet">
+    <form method="dialog">
+      <div class="sheet-head">
+        <span id="d-type" class="pill"></span>
+        <button class="close" aria-label="Zapri">✕</button>
+      </div>
+      <h2 id="d-title"></h2>
+      <dl>
+        <dt>Čas</dt><dd id="d-time"></dd>
+        <dt>Prostor</dt><dd id="d-room"></dd>
+        <dt>Izvajalci</dt><dd id="d-who"></dd>
+        <dt>Skupine</dt><dd id="d-groups"></dd>
+      </dl>
+    </form>
+  </dialog>
+
+  <!-- Nastavitve -->
+  <dialog id="settings" class="sheet">
+    <form method="dialog">
+      <div class="sheet-head">
+        <strong>Moje skupine</strong>
+        <button class="close" aria-label="Zapri">✕</button>
+      </div>
+      <p class="hint">Predavanja so vedno prikazana. Pri vajah izberi svojo skupino.</p>
+      <div id="subject-list"></div>
+      <label class="row toggle">
+        <span>Prikaži rezervacije</span>
+        <input type="checkbox" id="show-res">
+      </label>
+      <label class="row toggle">
+        <span>Prikaži vikend</span>
+        <input type="checkbox" id="show-weekend">
+      </label>
+      <p id="updated" class="hint"></p>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
