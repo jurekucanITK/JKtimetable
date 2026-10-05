@@ -1,0 +1,35 @@
+name: Posodobi urnik
+
+on:
+  schedule:
+    - cron: '0 4 * * *'     # vsak dan ob 4:00 UTC (6:00 pri nas poleti)
+    - cron: '0 14 * * 1-5'  # in med tednom še popoldne
+  workflow_dispatch:         # ročni zagon v zavihku Actions
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prenesi iCal iz Wise Timetable
+        run: |
+          curl -fsSL --retry 3 \
+            -A "Mozilla/5.0 (urnik-pwa)" \
+            "https://www.wise-tt.com/web/feri/reports?g=1341&lang=sl&format=ics" \
+            -o /tmp/urnik.ics
+          # varovalka: ne prepiši urnika s prazno ali napačno datoteko
+          grep -q "BEGIN:VCALENDAR" /tmp/urnik.ics
+          grep -q "BEGIN:VEVENT" /tmp/urnik.ics
+          mv /tmp/urnik.ics data/urnik.ics
+
+      - name: Shrani, če se je kaj spremenilo
+        run: |
+          git config user.name "urnik-bot"
+          git config user.email "urnik-bot@users.noreply.github.com"
+          git add data/urnik.ics
+          git diff --cached --quiet || git commit -m "Posodobljen urnik $(date -u +%F)"
+          git push
