@@ -1,7 +1,7 @@
 'use strict';
 
 /* =========================================================
-   Urnik — tedenski pregled iz Wise Timetable iCal
+   JKtimetable — tedenski pregled iz Wise Timetable iCal
    ========================================================= */
 
 const DATA_URL = 'data/urnik.ics';
