@@ -11,6 +11,25 @@ const DAY_NAMES = ['pon', 'tor', 'sre', 'čet', 'pet', 'sob', 'ned'];
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'avg', 'sep', 'okt', 'nov', 'dec'];
 const COLORS = ['#2f6fe4', '#d9480f', '#2b8a3e', '#ae3ec9', '#c2255c', '#0c8599', '#e67700', '#5f3dc4'];
 
+// Ročne preslikave terminov: kadar se skupine dejansko izvajajo drugače, kot piše v Wise.
+// Dogodek, ki se natanko ujema s `from` (dan 1=pon … 7=ned, ura, prostor), se prestavi na `to`
+// v istem tednu. Dogodek tega predmeta, ki se ne ujema z nobenim `from`, je dejanska sprememba
+// v Wise — ostane nespremenjen in je viden vsem skupinam.
+const OVERRIDES = [
+  {
+    subject: 'RAZVOJ INFORMACIJSKIH REŠITEV IN STORITEV',
+    type: 'RV',
+    slots: [
+      { from: { day: 2, start: '17:00', end: '20:00', room: 'G-219' },
+        to: { day: 1, start: '11:00', end: '14:00', room: 'F-104', group: '1' } },
+      { from: { day: 3, start: '18:00', end: '21:00', room: 'G2-HERTZ' },
+        to: { day: 3, start: '18:00', end: '21:00', room: 'G2-Hertz', group: '2' } },
+      { from: { day: 4, start: '10:00', end: '13:00', room: 'G2-HERTZ' },
+        to: { day: 4, start: '10:00', end: '13:00', room: 'G2-Hertz', group: '3' } },
+    ],
+  },
+];
+
 const $ = (id) => document.getElementById(id);
 
 let events = [];          // vsi dogodki
@@ -76,6 +95,34 @@ function toEvent(r) {
     room: unescapeIcs(r.LOCATION || ''),
     who, groupsText, groups: [...new Set(groupNums)],
   };
+}
+
+function applyOverrides(list) {
+  const isoDay = (d) => (d.getDay() + 6) % 7 + 1;
+  const sameRoom = (a, b) => shortRoom(a).trim().toLowerCase() === b.toLowerCase();
+  const at = (date, day, time) => {
+    const [h, m] = time.split(':').map(Number);
+    const d = addDays(mondayOf(date), day - 1);
+    d.setHours(h, m, 0, 0);
+    return d;
+  };
+  return list.map((ev) => {
+    const o = OVERRIDES.find((x) => x.subject === ev.subject && x.type === ev.type);
+    if (!o) return ev;
+    const slot = o.slots.find(({ from: f }) =>
+      isoDay(ev.start) === f.day && hhmm(ev.start) === f.start && hhmm(ev.end) === f.end && sameRoom(ev.room, f.room));
+    // dejanska sprememba v Wise: pokaži vsem, stare številke skupin ne veljajo več
+    if (!slot) return { ...ev, groups: [] };
+    const t = slot.to;
+    return {
+      ...ev,
+      start: at(ev.start, t.day, t.start),
+      end: at(ev.start, t.day, t.end),
+      room: t.room,
+      groups: [t.group],
+      groupsText: `${t.group}. skupina (prilagojeno)`,
+    };
+  });
 }
 
 /* ---------- pomožne ---------- */
@@ -294,7 +341,7 @@ function renderSettings() {
 
 /* ---------- nalaganje podatkov ---------- */
 function ingest(text) {
-  events = parseIcs(text);
+  events = applyOverrides(parseIcs(text));
   const map = new Map();
   events.forEach((e) => {
     if (e.type === 'RES' || e.type === 'OTHER') return;
