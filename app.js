@@ -87,7 +87,7 @@ function toEvent(r) {
   const tm = summary.match(/^(.*?)\s*\((PR|RV|LV|SV|SE)\)$/);
   const subject = tm ? tm[1] : summary;
   const type = tm ? tm[2] : (/^rezervacija$/i.test(summary) ? 'RES' : 'OTHER');
-  const who = (desc.match(/Predavatelji:\s*(.*)/) || [])[1] || '';
+  const who = (desc.match(/(?:Izvajalci|Predavatelji):\s*(.*)/) || [])[1] || '';
   const groupsText = (desc.match(/Skupine:\s*(.*)/) || [])[1] || '';
   const groupNums = [...groupsText.matchAll(/(?:RV|LV|SV)\s*-\s*(\d+)\.\s*sk/g)].map((m) => m[1]);
   return {
