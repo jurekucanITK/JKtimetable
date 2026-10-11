@@ -70,8 +70,8 @@ da nameščene aplikacije prevzamejo novo različico.
 ### Ročne preslikave terminov
 
 Če se vaje dejansko izvajajo drugače, kot piše v Wise (npr. drugačna razdelitev skupin), dodaj predmet v
-seznam `OVERRIDES` na vrhu `app.js`. Vsak redni termin iz Wise (`from`) se prestavi na nov termin (`to`); prostor in skupino v `to` lahko izpustiš, da ostaneta iz Wise.
-v istem tednu. Termin, ki se z nobenim `from` ne ujema (prestavljen, drug prostor …), je dejanska sprememba
+seznam `OVERRIDES` na vrhu `app.js`. Vsak redni termin iz Wise (`from`) se prestavi na nov termin (`to`)
+v istem tednu; prostor in skupino v `to` lahko izpustiš, da ostaneta iz Wise. Termin, ki se z nobenim `from` ne ujema (prestavljen, drug prostor …), je dejanska sprememba
 in se prikaže nespremenjen, vsem skupinam.
 
 Razčlenjevanje skupin (npr. `RV - 1. sk`) je prilagojeno obliki opisov v Wise Timetable. Če tvoja šola
