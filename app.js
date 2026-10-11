@@ -13,7 +13,7 @@ const COLORS = ['#2f6fe4', '#d9480f', '#2b8a3e', '#ae3ec9', '#c2255c', '#0c8599'
 
 // Ročne preslikave terminov: kadar se skupine dejansko izvajajo drugače, kot piše v Wise.
 // Dogodek, ki se natanko ujema s `from` (dan 1=pon … 7=ned, ura, prostor), se prestavi na `to`
-// v istem tednu. Dogodek tega predmeta, ki se ne ujema z nobenim `from`, je dejanska sprememba
+// v istem tednu; če `to` nima prostora ali skupine, ostaneta tista iz Wise. Dogodek tega predmeta, ki se ne ujema z nobenim `from`, je dejanska sprememba
 // v Wise — ostane nespremenjen in je viden vsem skupinam.
 const OVERRIDES = [
   {
@@ -26,6 +26,25 @@ const OVERRIDES = [
         to: { day: 3, start: '18:00', end: '21:00', room: 'G2-Hertz', group: '2' } },
       { from: { day: 4, start: '10:00', end: '13:00', room: 'G2-HERTZ' },
         to: { day: 4, start: '10:00', end: '13:00', room: 'G2-Hertz', group: '3' } },
+    ],
+  },
+  {
+    // skupine se ujemajo z Wise, popravljeni so le časi (prostor in skupina ostaneta iz Wise)
+    subject: 'PODATKOVNE TEHNOLOGIJE IN STORITVE',
+    type: 'RV',
+    slots: [
+      { from: { day: 5, start: '10:00', end: '13:00', room: 'C-202' },
+        to: { day: 5, start: '10:00', end: '12:15' } },
+      { from: { day: 4, start: '16:00', end: '19:00', room: 'G-219' },
+        to: { day: 4, start: '16:00', end: '18:15' } },
+      { from: { day: 5, start: '13:00', end: '16:00', room: 'C-202' },
+        to: { day: 5, start: '13:00', end: '15:15' } },
+      { from: { day: 5, start: '13:00', end: '16:00', room: 'G2 - P.06' },
+        to: { day: 5, start: '13:00', end: '15:15' } },
+      { from: { day: 5, start: '07:00', end: '10:00', room: 'G3 - Turing' },
+        to: { day: 5, start: '07:45', end: '10:00' } },
+      { from: { day: 4, start: '09:00', end: '12:00', room: 'F-103/a' },
+        to: { day: 4, start: '09:45', end: '12:00' } },
     ],
   },
 ];
@@ -118,9 +137,9 @@ function applyOverrides(list) {
       ...ev,
       start: at(ev.start, t.day, t.start),
       end: at(ev.start, t.day, t.end),
-      room: t.room,
-      groups: [t.group],
-      groupsText: `${t.group}. skupina (prilagojeno)`,
+      room: t.room || ev.room,
+      groups: t.group ? [t.group] : ev.groups,
+      groupsText: t.group ? `${t.group}. skupina (prilagojeno)` : ev.groupsText,
     };
   });
 }
