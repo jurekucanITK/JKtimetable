@@ -1,5 +1,5 @@
 // Service worker: aplikacija dela tudi brez povezave.
-const CACHE = 'jktimetable-v4';
+const CACHE = 'jktimetable-v5';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'manifest.json', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon.svg'];
 
 self.addEventListener('install', (e) => {

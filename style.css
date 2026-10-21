@@ -23,6 +23,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body {
   background: var(--bg);
@@ -48,6 +49,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 }
 .icon-btn:active { background: var(--line); }
 #settings-btn { font-size: 20px; }
+#exams-btn svg { display: block; margin: auto; }
 .title { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 2px 0; }
 .title span { font-weight: 650; font-size: 17px; }
 .title small { color: var(--muted); font-size: 12px; min-height: 14px; }
@@ -141,3 +143,72 @@ dd { margin: 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); font-size: 15px; }
 .toggle input { width: 22px; height: 22px; accent-color: var(--accent); }
+
+/* ---------- kolokviji v urniku ---------- */
+.exam-chip {
+  display: block; max-width: calc(100% - 4px); margin: 3px auto 0; padding: 1px 4px;
+  border-radius: 6px; background: var(--now); color: #fff;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0; text-transform: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ev.exam {
+  z-index: 2;
+  background: color-mix(in srgb, var(--now) 16%, var(--surface));
+  border-left-color: var(--now);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--now) 50%, transparent);
+}
+.ev.exam .n { color: var(--now); }
+#d-groups { white-space: pre-wrap; word-break: break-word; }
+.detail-actions { margin-top: 18px; }
+.detail-actions .btn { width: 100%; }
+
+/* ---------- podstran kolokvijev ---------- */
+#exam-add { font-size: 28px; font-weight: 300; }
+.page-body { max-width: 560px; margin: 0 auto; padding: 4px 16px calc(env(safe-area-inset-bottom) + 24px); }
+.section-title {
+  margin: 18px 4px 8px; font-size: 12px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.exam-item {
+  display: flex; gap: 12px; align-items: flex-start; width: 100%; margin-bottom: 8px; padding: 12px;
+  text-align: left; background: var(--surface); border: 1px solid var(--line);
+  border-left: 4px solid var(--c); border-radius: 14px;
+}
+.exam-item:active { filter: brightness(.96); }
+.exam-item.past { opacity: .55; }
+.exam-date {
+  flex: none; width: 42px; text-align: center; line-height: 1.2;
+  font-size: 11px; color: var(--muted); text-transform: uppercase;
+}
+.exam-date b { display: block; font-size: 22px; color: var(--text); }
+.exam-body { flex: 1; min-width: 0; }
+.exam-subj { font-size: 15px; font-weight: 650; }
+.exam-meta { margin-top: 2px; font-size: 13px; color: var(--muted); }
+.exam-note { font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+.exam-note:not(:empty) { margin-top: 6px; }
+.exam-when { flex: none; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.exam-when.soon { color: var(--now); }
+.empty-note { padding: 48px 16px; text-align: center; font-size: 14px; color: var(--muted); }
+.exam-tools { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
+.center { text-align: center; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 42px; padding: 0 18px; border-radius: 12px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); font-size: 15px; font-weight: 550;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.danger { color: var(--now); }
+
+/* ---------- obrazec ---------- */
+.field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+.field input, .field select, .field textarea {
+  width: 100%; min-height: 42px; padding: 9px 10px;
+  font: inherit; font-size: 16px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+}
+.field input[type="date"], .field input[type="time"] { -webkit-appearance: none; appearance: none; text-align: left; }
+.field textarea { resize: vertical; }
+.field-row { display: flex; gap: 10px; }
+.form-actions { display: flex; gap: 10px; margin-top: 6px; }
+.form-actions .primary { flex: 1; }

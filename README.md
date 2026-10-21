@@ -5,6 +5,8 @@ Pri vsakem predmetu izbereš svojo skupino za vaje, aplikacija pa prikaže samo 
 
 - tedenski pogled, menjava tedna s puščicami ali potegom (swipe)
 - izbira skupine za vsak predmet posebej (ali skrij predmet)
+- seznam kolokvijev z odštevanjem dni; vneseni kolokviji se prikažejo tudi v urniku
+  (shranjeni so na napravi, z izvozom/uvozom jih preneseš drugam)
 - podrobnosti ure ob dotiku: prostor, izvajalci, skupine
 - deluje brez povezave (prikaže zadnji naloženi urnik)
 - namestljiva na začetni zaslon (iPhone in Android)

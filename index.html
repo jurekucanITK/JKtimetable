@@ -17,18 +17,68 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="top">
-    <button id="prev" class="icon-btn" aria-label="Prejšnji teden">‹</button>
-    <button id="title" class="title" aria-label="Na današnji teden">
-      <span id="week-label">JKtimetable</span>
-      <small id="week-sub"></small>
-    </button>
-    <button id="next" class="icon-btn" aria-label="Naslednji teden">›</button>
-    <button id="settings-btn" class="icon-btn" aria-label="Nastavitve">⚙︎</button>
-  </header>
+  <div id="timetable-view">
+    <header class="top">
+      <button id="prev" class="icon-btn" aria-label="Prejšnji teden">‹</button>
+      <button id="title" class="title" aria-label="Na današnji teden">
+        <span id="week-label">JKtimetable</span>
+        <small id="week-sub"></small>
+      </button>
+      <button id="next" class="icon-btn" aria-label="Naslednji teden">›</button>
+      <button id="exams-btn" class="icon-btn" aria-label="Kolokviji">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></svg>
+      </button>
+      <button id="settings-btn" class="icon-btn" aria-label="Nastavitve">⚙︎</button>
+    </header>
 
-  <main id="week" class="week" aria-live="polite"></main>
-  <p id="status" class="status"></p>
+    <main id="week" class="week" aria-live="polite"></main>
+    <p id="status" class="status"></p>
+  </div>
+
+  <!-- Kolokviji -->
+  <div id="exams-view" hidden>
+    <header class="top">
+      <button id="exams-back" class="icon-btn" aria-label="Nazaj na urnik">‹</button>
+      <div class="title">
+        <span>Kolokviji</span>
+        <small id="exams-sub"></small>
+      </div>
+      <button id="exam-add" class="icon-btn" aria-label="Dodaj kolokvij">+</button>
+    </header>
+    <main class="page-body">
+      <div id="exam-list"></div>
+      <div class="exam-tools">
+        <button id="exam-export" class="btn" type="button">Izvozi</button>
+        <label class="btn">Uvozi<input type="file" id="exam-import" accept="application/json,.json" hidden></label>
+      </div>
+      <p class="hint center">Kolokviji so shranjeni na tej napravi. Z izvozom narediš varnostno kopijo
+        ali jih preneseš na drugo napravo.</p>
+    </main>
+  </div>
+
+  <!-- Urejanje kolokvija -->
+  <dialog id="exam-edit" class="sheet">
+    <form id="exam-form">
+      <div class="sheet-head">
+        <strong id="exam-edit-title">Nov kolokvij</strong>
+        <button type="button" id="exam-close" class="close" aria-label="Zapri">✕</button>
+      </div>
+      <label class="field"><span>Predmet</span><select id="ex-subject"></select></label>
+      <label class="field" id="ex-other-wrap" hidden><span>Ime predmeta</span><input id="ex-other" type="text"></label>
+      <label class="field"><span>Naziv</span><input id="ex-title" type="text" placeholder="npr. 1. kolokvij"></label>
+      <label class="field"><span>Datum</span><input id="ex-date" type="date" required></label>
+      <div class="field-row">
+        <label class="field"><span>Od (neobvezno)</span><input id="ex-start" type="time"></label>
+        <label class="field"><span>Do</span><input id="ex-end" type="time"></label>
+      </div>
+      <label class="field"><span>Prostor</span><input id="ex-room" type="text"></label>
+      <label class="field"><span>Opombe</span><textarea id="ex-note" rows="3" placeholder="snov, dovoljeni pripomočki …"></textarea></label>
+      <div class="form-actions">
+        <button type="button" id="ex-delete" class="btn danger">Izbriši</button>
+        <button type="submit" class="btn primary">Shrani</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- Podrobnosti dogodka -->
   <dialog id="detail" class="sheet">
@@ -41,9 +91,12 @@
       <dl>
         <dt>Čas</dt><dd id="d-time"></dd>
         <dt>Prostor</dt><dd id="d-room"></dd>
-        <dt>Izvajalci</dt><dd id="d-who"></dd>
-        <dt>Skupine</dt><dd id="d-groups"></dd>
+        <dt id="dt-who">Izvajalci</dt><dd id="d-who"></dd>
+        <dt id="dt-groups">Skupine</dt><dd id="d-groups"></dd>
       </dl>
+      <div class="detail-actions" id="d-actions" hidden>
+        <button type="button" id="d-edit" class="btn">Uredi kolokvij</button>
+      </div>
     </form>
   </dialog>
 

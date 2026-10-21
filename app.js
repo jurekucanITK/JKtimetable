@@ -7,6 +7,7 @@
 const DATA_URL = 'data/urnik.ics';
 const STORE_KEY = 'urnik.settings.v1';
 const CACHE_KEY = 'urnik.ics.v1';
+const EXAMS_KEY = 'jktimetable.exams.v1';
 const DAY_NAMES = ['pon', 'tor', 'sre', 'čet', 'pet', 'sob', 'ned'];
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'avg', 'sep', 'okt', 'nov', 'dec'];
 const COLORS = ['#2f6fe4', '#d9480f', '#2b8a3e', '#ae3ec9', '#c2255c', '#0c8599', '#e67700', '#5f3dc4'];
@@ -55,6 +56,7 @@ let events = [];          // vsi dogodki
 let subjects = [];        // [{name, groups:[..], color}]
 let weekOffset = 0;
 let settings = loadSettings();
+let exams = loadExams();   // [{id, subject, title, date:'YYYY-MM-DD', start:'HH:MM'|'', end, room, note}]
 
 /* ---------- nastavitve ---------- */
 function loadSettings() {
@@ -67,6 +69,17 @@ function loadSettings() {
 function saveSettings() {
   delete settings.fresh;
   try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch (_) {}
+}
+
+function loadExams() {
+  try {
+    const a = JSON.parse(localStorage.getItem(EXAMS_KEY));
+    if (Array.isArray(a)) return a;
+  } catch (_) {}
+  return [];
+}
+function saveExams() {
+  try { localStorage.setItem(EXAMS_KEY, JSON.stringify(exams)); } catch (_) {}
 }
 
 /* ---------- iCal parser ---------- */
@@ -170,6 +183,25 @@ function addDays(d, n) {
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+function isoDate(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function dateAt(iso, time = '00:00') {
+  const [y, mo, d] = iso.split('-').map(Number);
+  const [h, mi] = time.split(':').map(Number);
+  return new Date(y, mo - 1, d, h, mi);
+}
+// 1 dan, 2 dneva, 3 dni … (forms: [1, 2, 3–4, 5+])
+function plural(n, forms) {
+  const r = n % 100;
+  return r === 1 ? forms[0] : r === 2 ? forms[1] : r === 3 || r === 4 ? forms[2] : forms[3];
+}
+function subjectLabel(s) {
+  return s === s.toUpperCase() ? niceCase(s) : s;
+}
 function baseMonday() {
   const now = new Date();
   const m = mondayOf(now);
@@ -196,7 +228,9 @@ function render() {
   const weekEnd = addDays(monday, nDays);
   const today = new Date();
 
-  const weekEvents = events.filter((e) => e.start >= monday && e.start < weekEnd && isVisible(e));
+  const weekExams = examEvents().filter((e) => e.start >= monday && e.start < weekEnd);
+  const weekEvents = events.filter((e) => e.start >= monday && e.start < weekEnd && isVisible(e))
+    .concat(weekExams.filter((e) => !e.allDay));
 
   // naslov
   const last = days[days.length - 1];
@@ -228,6 +262,14 @@ function render() {
   days.forEach((d, i) => {
     const h = el('div', 'day-head' + (sameDay(d, today) ? ' today' : ''));
     h.innerHTML = `${DAY_NAMES[i]}<b>${d.getDate()}</b>`;
+    // kolokviji brez ure: oznaka pod datumom
+    weekExams.filter((e) => e.allDay && sameDay(e.start, d)).forEach((e) => {
+      const c = el('button', 'exam-chip');
+      c.textContent = abbreviate(e.subject);
+      c.title = `${subjectLabel(e.subject)} · ${e.title}`;
+      c.addEventListener('click', () => openDetail(e));
+      h.append(c);
+    });
     week.append(h);
   });
 
@@ -245,7 +287,7 @@ function render() {
     col.style.height = height + 'px';
     const list = weekEvents.filter((e) => sameDay(e.start, d)).sort((a, b) => a.start - b.start || b.end - a.end);
     layoutLanes(list).forEach(({ ev, lane, lanes }) => {
-      const b = el('button', 'ev' + (ev.type === 'RV' || ev.type === 'LV' ? ' rv' : '') + (ev.type === 'RES' ? ' res' : ''));
+      const b = el('button', 'ev' + (ev.type === 'RV' || ev.type === 'LV' ? ' rv' : '') + (ev.type === 'RES' ? ' res' : '') + (ev.type === 'EXAM' ? ' exam' : ''));
       b.style.setProperty('--c', colorOf(ev.subject));
       b.style.top = y(ev.start) + 1 + 'px';
       b.style.height = Math.max(y(ev.end) - y(ev.start) - 2, 18) + 'px';
@@ -255,7 +297,8 @@ function render() {
         b.style.width = `calc(${100 / lanes}% - 2px)`;
       }
       const name = ev.type === 'RES' ? 'Rez.' : abbreviate(ev.subject);
-      const type = ev.type === 'PR' ? 'PR' : ev.type === 'RES' || ev.type === 'OTHER' ? '' : `${ev.type}${ev.groups.length === 1 ? ' ' + ev.groups[0] : ''}`;
+      const type = ev.type === 'EXAM' ? ev.title
+        : ev.type === 'PR' ? 'PR' : ev.type === 'RES' || ev.type === 'OTHER' ? '' : `${ev.type}${ev.groups.length === 1 ? ' ' + ev.groups[0] : ''}`;
       b.innerHTML = `<span class="n"></span><span class="t"></span><span class="r"></span>`;
       b.querySelector('.n').textContent = name + (type ? ' · ' + type : '');
       b.querySelector('.t').textContent = `${hhmm(ev.start)}–${hhmm(ev.end)}`;
@@ -272,7 +315,7 @@ function render() {
     week.append(col);
   });
 
-  if (!weekEvents.length) {
+  if (!weekEvents.length && !weekExams.length) {
     const e = el('div', 'empty');
     e.textContent = events.length ? 'Ta teden ni ničesar. 🎉' : 'Nalagam urnik …';
     week.append(e);
@@ -315,18 +358,167 @@ function colorOf(subject) {
 }
 
 /* ---------- podrobnosti ---------- */
-const TYPE_NAMES = { PR: 'Predavanja', RV: 'Računalniške vaje', LV: 'Laboratorijske vaje', SV: 'Seminarske vaje', SE: 'Seminar', RES: 'Rezervacija', OTHER: 'Dogodek' };
+const TYPE_NAMES = { PR: 'Predavanja', RV: 'Računalniške vaje', LV: 'Laboratorijske vaje', SV: 'Seminarske vaje', SE: 'Seminar', RES: 'Rezervacija', OTHER: 'Dogodek', EXAM: 'Kolokvij' };
 function openDetail(ev) {
+  const exam = ev.type === 'EXAM';
   const t = $('d-type');
   t.textContent = TYPE_NAMES[ev.type] || ev.type;
-  t.style.setProperty('--c', colorOf(ev.subject));
-  $('d-title').textContent = ev.type === 'RES' ? 'Rezervacija' : niceCase(ev.subject);
+  t.style.setProperty('--c', exam ? 'var(--now)' : colorOf(ev.subject));
+  $('d-title').textContent = ev.type === 'RES' ? 'Rezervacija' : subjectLabel(ev.subject);
   const d = ev.start;
-  $('d-time').textContent = `${DAY_NAMES[(d.getDay() + 6) % 7]}, ${d.getDate()}. ${d.getMonth() + 1}. · ${hhmm(ev.start)}–${hhmm(ev.end)}`;
+  const day = `${DAY_NAMES[(d.getDay() + 6) % 7]}, ${d.getDate()}. ${d.getMonth() + 1}.`;
+  $('d-time').textContent = ev.allDay ? day : `${day} · ${hhmm(ev.start)}–${hhmm(ev.end)}`;
   $('d-room').textContent = ev.room || '—';
-  $('d-who').textContent = ev.who ? ev.who.split(/,\s*/).map((n) => n.split(' ').map(niceCase).join(' ')).join(', ') : '—';
-  $('d-groups').textContent = ev.groupsText.length > 120 ? ev.groupsText.slice(0, 120) + '…' : (ev.groupsText || '—');
+  $('dt-who').textContent = exam ? 'Naziv' : 'Izvajalci';
+  $('dt-groups').textContent = exam ? 'Opombe' : 'Skupine';
+  if (exam) {
+    $('d-who').textContent = ev.title;
+    $('d-groups').textContent = ev.exam.note || '—';
+  } else {
+    $('d-who').textContent = ev.who ? ev.who.split(/,\s*/).map((n) => n.split(' ').map(niceCase).join(' ')).join(', ') : '—';
+    $('d-groups').textContent = ev.groupsText.length > 120 ? ev.groupsText.slice(0, 120) + '…' : (ev.groupsText || '—');
+  }
+  $('d-actions').hidden = !exam;
+  $('d-edit').onclick = exam ? () => { $('detail').close(); openExamEditor(ev.exam); } : null;
   $('detail').showModal();
+}
+
+/* ---------- kolokviji ---------- */
+const OTHER_SUBJECT = '__other';
+
+function examEvents() {
+  return exams.map((x) => {
+    const start = dateAt(x.date, x.start || '00:00');
+    let end = x.start && x.end ? dateAt(x.date, x.end) : null;
+    if (!end || end <= start) end = new Date(+start + 60 * 60 * 1000);
+    return {
+      type: 'EXAM', exam: x, uid: x.id, subject: x.subject, title: x.title || 'Kolokvij',
+      allDay: !x.start, start, end, room: x.room || '', who: '', groupsText: '', groups: [],
+    };
+  });
+}
+
+function renderExams() {
+  const list = $('exam-list');
+  list.innerHTML = '';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sorted = exams.slice().sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
+  const upcoming = sorted.filter((x) => dateAt(x.date) >= today);
+  const past = sorted.filter((x) => dateAt(x.date) < today).reverse();
+
+  const n = upcoming.length;
+  $('exams-sub').textContent = n ? `${n} ${plural(n, ['prihajajoč', 'prihajajoča', 'prihajajoči', 'prihajajočih'])}` : '';
+
+  if (!exams.length) {
+    const e = el('p', 'empty-note');
+    e.textContent = 'Še ni vnesenih kolokvijev. Dodaj jih z +.';
+    list.append(e);
+    return;
+  }
+
+  const item = (x, isPast) => {
+    const date = dateAt(x.date);
+    const b = el('button', 'exam-item' + (isPast ? ' past' : ''));
+    b.style.setProperty('--c', colorOf(x.subject));
+    b.innerHTML = `<div class="exam-date"><span></span><b></b><span></span></div>
+      <div class="exam-body"><div class="exam-subj"></div><div class="exam-meta"></div><div class="exam-note"></div></div>
+      <div class="exam-when"></div>`;
+    const [dow, mon] = b.querySelectorAll('.exam-date span');
+    dow.textContent = DAY_NAMES[(date.getDay() + 6) % 7];
+    b.querySelector('.exam-date b').textContent = date.getDate();
+    mon.textContent = MONTHS[date.getMonth()];
+    b.querySelector('.exam-subj').textContent = subjectLabel(x.subject);
+    const time = x.start ? (x.end ? `${x.start}–${x.end}` : x.start) : '';
+    b.querySelector('.exam-meta').textContent = [x.title || 'Kolokvij', time, x.room].filter(Boolean).join(' · ');
+    b.querySelector('.exam-note').textContent = x.note || '';
+    if (!isPast) {
+      const days = Math.round((date - today) / 86400000);
+      const w = b.querySelector('.exam-when');
+      w.textContent = days === 0 ? 'danes' : days === 1 ? 'jutri' : `čez ${days} ${plural(days, ['dan', 'dneva', 'dni', 'dni'])}`;
+      if (days <= 7) w.classList.add('soon');
+    }
+    b.addEventListener('click', () => openExamEditor(x));
+    return b;
+  };
+
+  const section = (title, items, isPast) => {
+    if (!items.length) return;
+    const h = el('h3', 'section-title');
+    h.textContent = title;
+    list.append(h, ...items.map((x) => item(x, isPast)));
+  };
+  section('Prihajajoči', upcoming, false);
+  section('Pretekli', past, true);
+}
+
+let editingId = null;
+function openExamEditor(x) {
+  editingId = x ? x.id : null;
+  $('exam-edit-title').textContent = x ? 'Uredi kolokvij' : 'Nov kolokvij';
+  const sel = $('ex-subject');
+  sel.innerHTML = '';
+  subjects.forEach((s) => sel.add(new Option(niceCase(s.name), s.name)));
+  sel.add(new Option('Drugo …', OTHER_SUBJECT));
+  const known = x && subjects.some((s) => s.name === x.subject);
+  sel.value = !x ? (subjects[0]?.name ?? OTHER_SUBJECT) : known ? x.subject : OTHER_SUBJECT;
+  $('ex-other').value = x && !known ? x.subject : '';
+  $('ex-other-wrap').hidden = sel.value !== OTHER_SUBJECT;
+  $('ex-title').value = x ? x.title : '';
+  $('ex-date').value = x ? x.date : isoDate(new Date());
+  $('ex-start').value = x ? x.start : '';
+  $('ex-end').value = x ? x.end : '';
+  $('ex-room').value = x ? x.room : '';
+  $('ex-note').value = x ? x.note : '';
+  $('ex-delete').hidden = !x;
+  $('exam-edit').showModal();
+}
+
+function examsChanged() {
+  saveExams();
+  renderExams();
+  render();
+}
+
+function exportExams() {
+  const name = `kolokviji-${isoDate(new Date())}.json`;
+  const blob = new Blob([JSON.stringify(exams, null, 2)], { type: 'application/json' });
+  const file = new File([blob], name, { type: 'application/json' });
+  if (navigator.canShare?.({ files: [file] })) {
+    navigator.share({ files: [file] }).catch(() => {});
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+async function importExams(file) {
+  try {
+    const data = JSON.parse(await file.text());
+    if (!Array.isArray(data)) throw new Error('format');
+    const valid = data.filter((x) => x && typeof x.subject === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.date || ''));
+    if (!valid.length) throw new Error('empty');
+    const byId = new Map(exams.map((x) => [x.id, x]));
+    valid.forEach((x) => {
+      const id = x.id || newId();
+      byId.set(id, {
+        id, subject: x.subject, title: x.title || '', date: x.date,
+        start: x.start || '', end: x.end || '', room: x.room || '', note: x.note || '',
+      });
+    });
+    exams = [...byId.values()];
+    examsChanged();
+    alert(`Uvoženih kolokvijev: ${valid.length}`);
+  } catch (_) {
+    alert('Datoteke ni bilo mogoče uvoziti.');
+  }
+}
+
+function newId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
 /* ---------- nastavitve ---------- */
@@ -391,6 +583,7 @@ async function load() {
   }
   render();
   renderSettings();
+  if (!$('exams-view').hidden) renderExams();
   if (settings.fresh && subjects.some((s) => s.groups.length)) $('settings').showModal();
 }
 
@@ -410,6 +603,65 @@ $('settings').addEventListener('close', () => { saveSettings(); render(); });
 $('show-res').addEventListener('change', (e) => { settings.showRes = e.target.checked; saveSettings(); render(); });
 $('show-weekend').addEventListener('change', (e) => { settings.showWeekend = e.target.checked; saveSettings(); render(); });
 
+// kolokviji
+let examsFromApp = false;
+$('exams-btn').addEventListener('click', () => { examsFromApp = true; location.hash = 'kolokviji'; });
+$('exams-back').addEventListener('click', () => {
+  if (examsFromApp) { history.back(); return; }
+  history.replaceState(null, '', location.pathname + location.search);
+  route();
+});
+$('exam-add').addEventListener('click', () => openExamEditor(null));
+$('exam-close').addEventListener('click', () => $('exam-edit').close());
+$('ex-subject').addEventListener('change', (e) => {
+  $('ex-other-wrap').hidden = e.target.value !== OTHER_SUBJECT;
+  if (!$('ex-other-wrap').hidden) $('ex-other').focus();
+});
+$('exam-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const sel = $('ex-subject').value;
+  const subject = sel === OTHER_SUBJECT ? $('ex-other').value.trim() : sel;
+  if (!subject) { $('ex-other').focus(); return; }
+  const start = $('ex-start').value;
+  const rec = {
+    id: editingId || newId(),
+    subject,
+    title: $('ex-title').value.trim(),
+    date: $('ex-date').value,
+    start,
+    end: start ? $('ex-end').value : '',
+    room: $('ex-room').value.trim(),
+    note: $('ex-note').value.trim(),
+  };
+  exams = exams.filter((x) => x.id !== rec.id).concat(rec);
+  $('exam-edit').close();
+  examsChanged();
+});
+$('ex-delete').addEventListener('click', () => {
+  if (!editingId || !confirm('Izbrišem ta kolokvij?')) return;
+  exams = exams.filter((x) => x.id !== editingId);
+  $('exam-edit').close();
+  examsChanged();
+});
+$('exam-export').addEventListener('click', exportExams);
+$('exam-import').addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (f) importExams(f);
+});
+
+// podstran kolokvijev (#kolokviji)
+function route() {
+  const showExams = location.hash === '#kolokviji';
+  if (!showExams) examsFromApp = false;
+  $('timetable-view').hidden = showExams;
+  $('exams-view').hidden = !showExams;
+  if (showExams) renderExams();
+  else { syncHeader(); render(); }
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+
 // zapri list s tapom na ozadje
 document.querySelectorAll('dialog').forEach((dlg) => {
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
@@ -425,14 +677,15 @@ $('week').addEventListener('touchend', (e) => {
 
 // tipkovnica (za računalnik)
 document.addEventListener('keydown', (e) => {
-  if (document.querySelector('dialog[open]')) return;
+  if (document.querySelector('dialog[open]') || !$('exams-view').hidden) return;
   if (e.key === 'ArrowLeft') { weekOffset--; render(); }
   if (e.key === 'ArrowRight') { weekOffset++; render(); }
 });
 
 // višina glave za lepljive glave dni
 function syncHeader() {
-  document.documentElement.style.setProperty('--head', document.querySelector('.top').offsetHeight + 'px');
+  const h = document.querySelector('#timetable-view .top').offsetHeight;
+  if (h) document.documentElement.style.setProperty('--head', h + 'px');
 }
 window.addEventListener('resize', syncHeader);
 syncHeader();
@@ -443,5 +696,5 @@ setInterval(render, 60 * 1000);
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
-render();
+route();
 load();
