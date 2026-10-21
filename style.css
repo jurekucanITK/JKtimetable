@@ -158,9 +158,6 @@ dd { margin: 0; }
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--now) 50%, transparent);
 }
 .ev.exam .n { color: var(--now); }
-#d-groups { white-space: pre-wrap; word-break: break-word; }
-.detail-actions { margin-top: 18px; }
-.detail-actions .btn { width: 100%; }
 
 /* ---------- podstran kolokvijev ---------- */
 #exam-add { font-size: 28px; font-weight: 300; }
@@ -184,13 +181,9 @@ dd { margin: 0; }
 .exam-body { flex: 1; min-width: 0; }
 .exam-subj { font-size: 15px; font-weight: 650; }
 .exam-meta { margin-top: 2px; font-size: 13px; color: var(--muted); }
-.exam-note { font-size: 13px; white-space: pre-wrap; word-break: break-word; }
-.exam-note:not(:empty) { margin-top: 6px; }
 .exam-when { flex: none; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
 .exam-when.soon { color: var(--now); }
 .empty-note { padding: 48px 16px; text-align: center; font-size: 14px; color: var(--muted); }
-.exam-tools { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
-.center { text-align: center; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -202,13 +195,11 @@ dd { margin: 0; }
 
 /* ---------- obrazec ---------- */
 .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
-.field input, .field select, .field textarea {
+.field input, .field select {
   width: 100%; min-height: 42px; padding: 9px 10px;
   font: inherit; font-size: 16px; color: var(--text);
   background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
 }
-.field input[type="date"], .field input[type="time"] { -webkit-appearance: none; appearance: none; text-align: left; }
-.field textarea { resize: vertical; }
-.field-row { display: flex; gap: 10px; }
+.field input[type="date"] { -webkit-appearance: none; appearance: none; text-align: left; }
 .form-actions { display: flex; gap: 10px; margin-top: 6px; }
 .form-actions .primary { flex: 1; }

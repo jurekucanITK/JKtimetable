@@ -47,12 +47,6 @@
     </header>
     <main class="page-body">
       <div id="exam-list"></div>
-      <div class="exam-tools">
-        <button id="exam-export" class="btn" type="button">Izvozi</button>
-        <label class="btn">Uvozi<input type="file" id="exam-import" accept="application/json,.json" hidden></label>
-      </div>
-      <p class="hint center">Kolokviji so shranjeni na tej napravi. Z izvozom narediš varnostno kopijo
-        ali jih preneseš na drugo napravo.</p>
     </main>
   </div>
 
@@ -64,15 +58,8 @@
         <button type="button" id="exam-close" class="close" aria-label="Zapri">✕</button>
       </div>
       <label class="field"><span>Predmet</span><select id="ex-subject"></select></label>
-      <label class="field" id="ex-other-wrap" hidden><span>Ime predmeta</span><input id="ex-other" type="text"></label>
       <label class="field"><span>Naziv</span><input id="ex-title" type="text" placeholder="npr. 1. kolokvij"></label>
       <label class="field"><span>Datum</span><input id="ex-date" type="date" required></label>
-      <div class="field-row">
-        <label class="field"><span>Od (neobvezno)</span><input id="ex-start" type="time"></label>
-        <label class="field"><span>Do</span><input id="ex-end" type="time"></label>
-      </div>
-      <label class="field"><span>Prostor</span><input id="ex-room" type="text"></label>
-      <label class="field"><span>Opombe</span><textarea id="ex-note" rows="3" placeholder="snov, dovoljeni pripomočki …"></textarea></label>
       <div class="form-actions">
         <button type="button" id="ex-delete" class="btn danger">Izbriši</button>
         <button type="submit" class="btn primary">Shrani</button>
@@ -91,12 +78,9 @@
       <dl>
         <dt>Čas</dt><dd id="d-time"></dd>
         <dt>Prostor</dt><dd id="d-room"></dd>
-        <dt id="dt-who">Izvajalci</dt><dd id="d-who"></dd>
-        <dt id="dt-groups">Skupine</dt><dd id="d-groups"></dd>
+        <dt>Izvajalci</dt><dd id="d-who"></dd>
+        <dt>Skupine</dt><dd id="d-groups"></dd>
       </dl>
-      <div class="detail-actions" id="d-actions" hidden>
-        <button type="button" id="d-edit" class="btn">Uredi kolokvij</button>
-      </div>
     </form>
   </dialog>
 

@@ -56,7 +56,7 @@ let events = [];          // vsi dogodki
 let subjects = [];        // [{name, groups:[..], color}]
 let weekOffset = 0;
 let settings = loadSettings();
-let exams = loadExams();   // [{id, subject, title, date:'YYYY-MM-DD', start:'HH:MM'|'', end, room, note}]
+let exams = loadExams();   // [{id, subject, title, date:'YYYY-MM-DD'}]
 
 /* ---------- nastavitve ---------- */
 function loadSettings() {
@@ -199,9 +199,6 @@ function plural(n, forms) {
   const r = n % 100;
   return r === 1 ? forms[0] : r === 2 ? forms[1] : r === 3 || r === 4 ? forms[2] : forms[3];
 }
-function subjectLabel(s) {
-  return s === s.toUpperCase() ? niceCase(s) : s;
-}
 function baseMonday() {
   const now = new Date();
   const m = mondayOf(now);
@@ -228,9 +225,7 @@ function render() {
   const weekEnd = addDays(monday, nDays);
   const today = new Date();
 
-  const weekExams = examEvents().filter((e) => e.start >= monday && e.start < weekEnd);
-  const weekEvents = events.filter((e) => e.start >= monday && e.start < weekEnd && isVisible(e))
-    .concat(weekExams.filter((e) => !e.allDay));
+  const weekEvents = events.filter((e) => e.start >= monday && e.start < weekEnd && isVisible(e));
 
   // naslov
   const last = days[days.length - 1];
@@ -262,12 +257,12 @@ function render() {
   days.forEach((d, i) => {
     const h = el('div', 'day-head' + (sameDay(d, today) ? ' today' : ''));
     h.innerHTML = `${DAY_NAMES[i]}<b>${d.getDate()}</b>`;
-    // kolokviji brez ure: oznaka pod datumom
-    weekExams.filter((e) => e.allDay && sameDay(e.start, d)).forEach((e) => {
+    // kolokvij, ko predmet ta dan nima ure v urniku: oznaka pod datumom
+    exams.filter((x) => x.date === isoDate(d) && !classesFor(x).length).forEach((x) => {
       const c = el('button', 'exam-chip');
-      c.textContent = abbreviate(e.subject);
-      c.title = `${subjectLabel(e.subject)} · ${e.title}`;
-      c.addEventListener('click', () => openDetail(e));
+      c.textContent = abbreviate(x.subject);
+      c.title = `${niceCase(x.subject)} · ${x.title || 'Kolokvij'}`;
+      c.addEventListener('click', () => openExamEditor(x));
       h.append(c);
     });
     week.append(h);
@@ -287,7 +282,8 @@ function render() {
     col.style.height = height + 'px';
     const list = weekEvents.filter((e) => sameDay(e.start, d)).sort((a, b) => a.start - b.start || b.end - a.end);
     layoutLanes(list).forEach(({ ev, lane, lanes }) => {
-      const b = el('button', 'ev' + (ev.type === 'RV' || ev.type === 'LV' ? ' rv' : '') + (ev.type === 'RES' ? ' res' : '') + (ev.type === 'EXAM' ? ' exam' : ''));
+      const exam = examFor(ev);
+      const b = el('button', 'ev' + (ev.type === 'RV' || ev.type === 'LV' ? ' rv' : '') + (ev.type === 'RES' ? ' res' : '') + (exam ? ' exam' : ''));
       b.style.setProperty('--c', colorOf(ev.subject));
       b.style.top = y(ev.start) + 1 + 'px';
       b.style.height = Math.max(y(ev.end) - y(ev.start) - 2, 18) + 'px';
@@ -297,7 +293,7 @@ function render() {
         b.style.width = `calc(${100 / lanes}% - 2px)`;
       }
       const name = ev.type === 'RES' ? 'Rez.' : abbreviate(ev.subject);
-      const type = ev.type === 'EXAM' ? ev.title
+      const type = exam ? exam.title || 'Kolokvij'
         : ev.type === 'PR' ? 'PR' : ev.type === 'RES' || ev.type === 'OTHER' ? '' : `${ev.type}${ev.groups.length === 1 ? ' ' + ev.groups[0] : ''}`;
       b.innerHTML = `<span class="n"></span><span class="t"></span><span class="r"></span>`;
       b.querySelector('.n').textContent = name + (type ? ' · ' + type : '');
@@ -315,7 +311,7 @@ function render() {
     week.append(col);
   });
 
-  if (!weekEvents.length && !weekExams.length) {
+  if (!weekEvents.length) {
     const e = el('div', 'empty');
     e.textContent = events.length ? 'Ta teden ni ničesar. 🎉' : 'Nalagam urnik …';
     week.append(e);
@@ -358,44 +354,31 @@ function colorOf(subject) {
 }
 
 /* ---------- podrobnosti ---------- */
-const TYPE_NAMES = { PR: 'Predavanja', RV: 'Računalniške vaje', LV: 'Laboratorijske vaje', SV: 'Seminarske vaje', SE: 'Seminar', RES: 'Rezervacija', OTHER: 'Dogodek', EXAM: 'Kolokvij' };
+const TYPE_NAMES = { PR: 'Predavanja', RV: 'Računalniške vaje', LV: 'Laboratorijske vaje', SV: 'Seminarske vaje', SE: 'Seminar', RES: 'Rezervacija', OTHER: 'Dogodek' };
 function openDetail(ev) {
-  const exam = ev.type === 'EXAM';
+  const exam = examFor(ev);
   const t = $('d-type');
-  t.textContent = TYPE_NAMES[ev.type] || ev.type;
+  t.textContent = exam ? exam.title || 'Kolokvij' : TYPE_NAMES[ev.type] || ev.type;
   t.style.setProperty('--c', exam ? 'var(--now)' : colorOf(ev.subject));
-  $('d-title').textContent = ev.type === 'RES' ? 'Rezervacija' : subjectLabel(ev.subject);
+  $('d-title').textContent = ev.type === 'RES' ? 'Rezervacija' : niceCase(ev.subject);
   const d = ev.start;
-  const day = `${DAY_NAMES[(d.getDay() + 6) % 7]}, ${d.getDate()}. ${d.getMonth() + 1}.`;
-  $('d-time').textContent = ev.allDay ? day : `${day} · ${hhmm(ev.start)}–${hhmm(ev.end)}`;
+  $('d-time').textContent = `${DAY_NAMES[(d.getDay() + 6) % 7]}, ${d.getDate()}. ${d.getMonth() + 1}. · ${hhmm(ev.start)}–${hhmm(ev.end)}`;
   $('d-room').textContent = ev.room || '—';
-  $('dt-who').textContent = exam ? 'Naziv' : 'Izvajalci';
-  $('dt-groups').textContent = exam ? 'Opombe' : 'Skupine';
-  if (exam) {
-    $('d-who').textContent = ev.title;
-    $('d-groups').textContent = ev.exam.note || '—';
-  } else {
-    $('d-who').textContent = ev.who ? ev.who.split(/,\s*/).map((n) => n.split(' ').map(niceCase).join(' ')).join(', ') : '—';
-    $('d-groups').textContent = ev.groupsText.length > 120 ? ev.groupsText.slice(0, 120) + '…' : (ev.groupsText || '—');
-  }
-  $('d-actions').hidden = !exam;
-  $('d-edit').onclick = exam ? () => { $('detail').close(); openExamEditor(ev.exam); } : null;
+  $('d-who').textContent = ev.who ? ev.who.split(/,\s*/).map((n) => n.split(' ').map(niceCase).join(' ')).join(', ') : '—';
+  $('d-groups').textContent = ev.groupsText.length > 120 ? ev.groupsText.slice(0, 120) + '…' : (ev.groupsText || '—');
   $('detail').showModal();
 }
 
 /* ---------- kolokviji ---------- */
-const OTHER_SUBJECT = '__other';
-
-function examEvents() {
-  return exams.map((x) => {
-    const start = dateAt(x.date, x.start || '00:00');
-    let end = x.start && x.end ? dateAt(x.date, x.end) : null;
-    if (!end || end <= start) end = new Date(+start + 60 * 60 * 1000);
-    return {
-      type: 'EXAM', exam: x, uid: x.id, subject: x.subject, title: x.title || 'Kolokvij',
-      allDay: !x.start, start, end, room: x.room || '', who: '', groupsText: '', groups: [],
-    };
-  });
+// Kolokvij je vezan na predmet in datum; čas in prostor sta tista iz urnika.
+function classesFor(x) {
+  return events.filter((e) => e.subject === x.subject && e.type !== 'RES' && isoDate(e.start) === x.date && isVisible(e))
+    .sort((a, b) => a.start - b.start);
+}
+function examFor(ev) {
+  if (ev.type === 'RES') return null;
+  const date = isoDate(ev.start);
+  return exams.find((x) => x.subject === ev.subject && x.date === date) || null;
 }
 
 function renderExams() {
@@ -403,7 +386,7 @@ function renderExams() {
   list.innerHTML = '';
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const sorted = exams.slice().sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
+  const sorted = exams.slice().sort((a, b) => a.date.localeCompare(b.date));
   const upcoming = sorted.filter((x) => dateAt(x.date) >= today);
   const past = sorted.filter((x) => dateAt(x.date) < today).reverse();
 
@@ -422,16 +405,16 @@ function renderExams() {
     const b = el('button', 'exam-item' + (isPast ? ' past' : ''));
     b.style.setProperty('--c', colorOf(x.subject));
     b.innerHTML = `<div class="exam-date"><span></span><b></b><span></span></div>
-      <div class="exam-body"><div class="exam-subj"></div><div class="exam-meta"></div><div class="exam-note"></div></div>
+      <div class="exam-body"><div class="exam-subj"></div><div class="exam-meta"></div></div>
       <div class="exam-when"></div>`;
     const [dow, mon] = b.querySelectorAll('.exam-date span');
     dow.textContent = DAY_NAMES[(date.getDay() + 6) % 7];
     b.querySelector('.exam-date b').textContent = date.getDate();
     mon.textContent = MONTHS[date.getMonth()];
-    b.querySelector('.exam-subj').textContent = subjectLabel(x.subject);
-    const time = x.start ? (x.end ? `${x.start}–${x.end}` : x.start) : '';
-    b.querySelector('.exam-meta').textContent = [x.title || 'Kolokvij', time, x.room].filter(Boolean).join(' · ');
-    b.querySelector('.exam-note').textContent = x.note || '';
+    b.querySelector('.exam-subj').textContent = niceCase(x.subject);
+    const cls = classesFor(x)[0];
+    const when = cls ? `${hhmm(cls.start)}–${hhmm(cls.end)}` : '';
+    b.querySelector('.exam-meta').textContent = [x.title || 'Kolokvij', when, cls && shortRoom(cls.room)].filter(Boolean).join(' · ');
     if (!isPast) {
       const days = Math.round((date - today) / 86400000);
       const w = b.querySelector('.exam-when');
@@ -459,17 +442,10 @@ function openExamEditor(x) {
   const sel = $('ex-subject');
   sel.innerHTML = '';
   subjects.forEach((s) => sel.add(new Option(niceCase(s.name), s.name)));
-  sel.add(new Option('Drugo …', OTHER_SUBJECT));
-  const known = x && subjects.some((s) => s.name === x.subject);
-  sel.value = !x ? (subjects[0]?.name ?? OTHER_SUBJECT) : known ? x.subject : OTHER_SUBJECT;
-  $('ex-other').value = x && !known ? x.subject : '';
-  $('ex-other-wrap').hidden = sel.value !== OTHER_SUBJECT;
+  if (x && !subjects.some((s) => s.name === x.subject)) sel.add(new Option(niceCase(x.subject), x.subject));
+  sel.value = x ? x.subject : subjects[0]?.name ?? '';
   $('ex-title').value = x ? x.title : '';
   $('ex-date').value = x ? x.date : isoDate(new Date());
-  $('ex-start').value = x ? x.start : '';
-  $('ex-end').value = x ? x.end : '';
-  $('ex-room').value = x ? x.room : '';
-  $('ex-note').value = x ? x.note : '';
   $('ex-delete').hidden = !x;
   $('exam-edit').showModal();
 }
@@ -478,43 +454,6 @@ function examsChanged() {
   saveExams();
   renderExams();
   render();
-}
-
-function exportExams() {
-  const name = `kolokviji-${isoDate(new Date())}.json`;
-  const blob = new Blob([JSON.stringify(exams, null, 2)], { type: 'application/json' });
-  const file = new File([blob], name, { type: 'application/json' });
-  if (navigator.canShare?.({ files: [file] })) {
-    navigator.share({ files: [file] }).catch(() => {});
-    return;
-  }
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
-
-async function importExams(file) {
-  try {
-    const data = JSON.parse(await file.text());
-    if (!Array.isArray(data)) throw new Error('format');
-    const valid = data.filter((x) => x && typeof x.subject === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x.date || ''));
-    if (!valid.length) throw new Error('empty');
-    const byId = new Map(exams.map((x) => [x.id, x]));
-    valid.forEach((x) => {
-      const id = x.id || newId();
-      byId.set(id, {
-        id, subject: x.subject, title: x.title || '', date: x.date,
-        start: x.start || '', end: x.end || '', room: x.room || '', note: x.note || '',
-      });
-    });
-    exams = [...byId.values()];
-    examsChanged();
-    alert(`Uvoženih kolokvijev: ${valid.length}`);
-  } catch (_) {
-    alert('Datoteke ni bilo mogoče uvoziti.');
-  }
 }
 
 function newId() {
@@ -613,26 +552,11 @@ $('exams-back').addEventListener('click', () => {
 });
 $('exam-add').addEventListener('click', () => openExamEditor(null));
 $('exam-close').addEventListener('click', () => $('exam-edit').close());
-$('ex-subject').addEventListener('change', (e) => {
-  $('ex-other-wrap').hidden = e.target.value !== OTHER_SUBJECT;
-  if (!$('ex-other-wrap').hidden) $('ex-other').focus();
-});
 $('exam-form').addEventListener('submit', (e) => {
   e.preventDefault();
-  const sel = $('ex-subject').value;
-  const subject = sel === OTHER_SUBJECT ? $('ex-other').value.trim() : sel;
-  if (!subject) { $('ex-other').focus(); return; }
-  const start = $('ex-start').value;
-  const rec = {
-    id: editingId || newId(),
-    subject,
-    title: $('ex-title').value.trim(),
-    date: $('ex-date').value,
-    start,
-    end: start ? $('ex-end').value : '',
-    room: $('ex-room').value.trim(),
-    note: $('ex-note').value.trim(),
-  };
+  const subject = $('ex-subject').value;
+  if (!subject) return;
+  const rec = { id: editingId || newId(), subject, title: $('ex-title').value.trim(), date: $('ex-date').value };
   exams = exams.filter((x) => x.id !== rec.id).concat(rec);
   $('exam-edit').close();
   examsChanged();
@@ -642,12 +566,6 @@ $('ex-delete').addEventListener('click', () => {
   exams = exams.filter((x) => x.id !== editingId);
   $('exam-edit').close();
   examsChanged();
-});
-$('exam-export').addEventListener('click', exportExams);
-$('exam-import').addEventListener('change', (e) => {
-  const f = e.target.files[0];
-  e.target.value = '';
-  if (f) importExams(f);
 });
 
 // podstran kolokvijev (#kolokviji)
