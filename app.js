@@ -371,14 +371,19 @@ function openDetail(ev) {
 
 /* ---------- kolokviji ---------- */
 // Kolokvij je vezan na predmet in datum; čas in prostor sta tista iz urnika.
+// Kolokviji se pišejo med predavanji: če ima predmet ta dan predavanja, veljajo le ta,
+// sicer (ni predavanj) ostale ure predmeta tistega dne.
 function classesFor(x) {
-  return events.filter((e) => e.subject === x.subject && e.type !== 'RES' && isoDate(e.start) === x.date && isVisible(e))
+  const all = events.filter((e) => e.subject === x.subject && e.type !== 'RES' && isoDate(e.start) === x.date && isVisible(e))
     .sort((a, b) => a.start - b.start);
+  const lectures = all.filter((e) => e.type === 'PR');
+  return lectures.length ? lectures : all;
 }
 function examFor(ev) {
   if (ev.type === 'RES') return null;
   const date = isoDate(ev.start);
-  return exams.find((x) => x.subject === ev.subject && x.date === date) || null;
+  const x = exams.find((x) => x.subject === ev.subject && x.date === date);
+  return x && classesFor(x).includes(ev) ? x : null;
 }
 
 function renderExams() {
