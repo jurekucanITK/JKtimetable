@@ -44,8 +44,8 @@ const OVERRIDES = [
         to: { day: 5, start: '13:00', end: '15:15' } },
       { from: { day: 5, start: '07:00', end: '10:00', room: 'G3 - Turing' },
         to: { day: 5, start: '07:45', end: '10:00' } },
-      { from: { day: 4, start: '09:00', end: '12:00', room: 'F-103/a' },
-        to: { day: 4, start: '09:45', end: '12:00' } },
+      { from: { day: 4, start: '09:00', end: '12:00', room: 'F-103' },
+        to: { day: 4, start: '09:45', end: '12:00', room: 'F-103/a' } },
     ],
   },
 ];
